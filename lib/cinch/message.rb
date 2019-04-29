@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
+
 require "time"
 require "cinch/formatting"
 
@@ -21,7 +22,7 @@ module Cinch
 
     # @return [Array<String>]
     attr_reader :params
-    
+
     # @return [Hash]
     attr_reader :tags
 
@@ -87,7 +88,7 @@ module Cinch
     def initialize(msg, bot)
       @raw     = msg
       @bot     = bot
-      @matches = {:ctcp => {}, :action => {}, :other => {}}
+      @matches = { ctcp: {}, action: {}, other: {} }
       @events  = []
       @time    = Time.now
       @statusmsg_mode = nil
@@ -97,13 +98,11 @@ module Cinch
     # @api private
     # @return [void]
     def parse
-      match = @raw.match(/(?:^@([^:]+))?(?::?(\S+) )?(\S+)(.*)/)
+      match = @raw.match(/\A(?:@([^ ]+) )?(?::(\S+) )?(\S+)(.*)/)
       tags, @prefix, @command, raw_params = match.captures
 
       if @bot.irc.network.ngametv?
-        if @prefix != "ngame"
-          @prefix = "%s!%s@%s" % [@prefix, @prefix, @prefix]
-        end
+        @prefix = "%s!%s@%s" % [@prefix, @prefix, @prefix] if @prefix != "ngame"
       end
 
       @params  = parse_params(raw_params)
@@ -168,9 +167,7 @@ module Cinch
         type = :other
       end
 
-      if strip_colors
-        text = Cinch::Formatting.unformat(text)
-      end
+      text = Cinch::Formatting.unformat(text) if strip_colors
 
       @matches[type][regexp] ||= text.match(regexp)
     end
@@ -192,9 +189,7 @@ module Cinch
     # @return [void]
     def reply(text, prefix = false)
       text = text.to_s
-      if @channel && prefix
-        text = text.split("\n").map {|l| "#{user.nick}: #{l}"}.join("\n")
-      end
+      text = text.split("\n").map { |l| "#{user.nick}: #{l}" }.join("\n") if @channel && prefix
 
       reply_target.send(text)
     end
@@ -205,9 +200,7 @@ module Cinch
     # @return (see #reply)
     def safe_reply(text, prefix = false)
       text = text.to_s
-      if channel && prefix
-        text = "#{@user.nick}: #{text}"
-      end
+      text = "#{@user.nick}: #{text}" if channel && prefix
       reply_target.safe_send(text)
     end
 
@@ -236,6 +229,7 @@ module Cinch
     # @return [void]
     def ctcp_reply(answer)
       return unless ctcp?
+
       @user.notice "\001#{@ctcp_command} #{answer}\001"
     end
 
@@ -248,19 +242,20 @@ module Cinch
     end
 
     private
+
     def reply_target
-      if @channel.nil? || @statusmsg_mode.nil?
-        return @target
-      end
+      return @target if @channel.nil? || @statusmsg_mode.nil?
+
       prefix = @bot.irc.isupport["PREFIX"][@statusmsg_mode]
-      return Target.new(prefix + @channel.name, @bot)
+      Target.new(prefix + @channel.name, @bot)
     end
+
     def regular_command?
       !numeric_reply? # a command can only be numeric or "regular"…
     end
 
     def parse_params(raw_params)
-      params     = []
+      params = []
       if match = raw_params.match(/(?:^:| :)(.*)$/)
         params = match.pre_match.split(" ")
         params << match[1]
@@ -268,44 +263,46 @@ module Cinch
         params = raw_params.split(" ")
       end
 
-      return params
+      params
     end
-    
+
     def parse_tags(raw_tags)
       return {} if raw_tags.nil?
-      
+
       def to_symbol(string)
-        return string.gsub(/-/, "_").downcase.to_sym
+        string.tr("-", "_").downcase.to_sym
       end
-      
+
       tags = {}
       raw_tags.split(";").each do |tag|
         tag_name, tag_value = tag.split("=")
-        if tag_value =~ /,/
-          tag_value = tag_value.split(',')
+        if /,/.match?(tag_value)
+          tag_value = tag_value.split(",")
         elsif tag_value.nil?
           tag_value = tag_name
         end
-        if tag_name =~ /\//
-          vendor, tag_name = tag_name.split('/')
+        if %r{/}.match?(tag_name)
+          vendor, tag_name = tag_name.split("/")
           tags[to_symbol(vendor)] = {
-            to_symbol(tag_name) => tag_value
+            to_symbol(tag_name) => tag_value,
           }
         else
           tags[to_symbol(tag_name)] = tag_value
         end
       end
-      return tags
+      tags
     end
 
     def parse_user
       return unless @prefix
+
       nick = @prefix[/^(\S+)!/, 1]
       user = @prefix[/^\S+!(\S+)@/, 1]
       host = @prefix[/@(\S+)$/, 1]
 
       return nil if nick.nil?
-      return @bot.user_list.find_ensured(user, nick, host)
+
+      @bot.user_list.find_ensured(user, nick, host)
     end
 
     def parse_channel
@@ -327,9 +324,7 @@ module Cinch
         if ch.nil? && numeric_reply? && @params.size > 1
           ch, status = privmsg_channel_name(@params[1])
         end
-        if ch
-          return @bot.channel_list.find_ensured(ch), status
-        end
+        return @bot.channel_list.find_ensured(ch), status if ch
       end
     end
 
@@ -346,8 +341,9 @@ module Cinch
 
     def parse_server
       return unless @prefix
-      return if @prefix.match(/[@!]/)
-      return @prefix[/^(\S+)/, 1]
+      return if @prefix =~ /[@!]/
+
+      @prefix[/^(\S+)/, 1]
     end
 
     def parse_error
@@ -366,27 +362,30 @@ module Cinch
     def parse_ctcp_message
       # has to be called after parse_params
       return unless ctcp?
+
       @params.last =~ /\001(.+)\001/
-      $1
+      Regexp.last_match(1)
     end
 
     def parse_ctcp_command
       # has to be called after parse_ctcp_message
       return unless ctcp?
+
       @ctcp_message.split(" ").first
     end
 
     def parse_ctcp_args
       # has to be called after parse_ctcp_message
       return unless ctcp?
+
       @ctcp_message.split(" ")[1..-1]
     end
 
     def parse_action_message
       # has to be called after parse_ctcp_message
       return nil unless action?
+
       @ctcp_message.split(" ", 2).last
     end
-
   end
 end
