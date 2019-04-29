@@ -9,6 +9,6 @@ Gem::Specification.new do |s|
   s.email = ["william@yossarian.net"]
   s.required_ruby_version = ">= 2.4"
   s.files = Dir["LICENSE", "README.md", ".yardopts", "{docs,lib,examples}/**/*"]
-  s.has_rdoc = "yard"
+  s.homepage = "https://github.com/woodruffw/grinch"
   s.license = "MIT"
 end
