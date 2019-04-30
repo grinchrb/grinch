@@ -1,6 +1,8 @@
 Grinch - The IRC Bot Building Framework
 =====================================
 
+[![Build Status](https://travis-ci.org/grinchrb/grinch.svg?branch=master)](https://travis-ci.org/grinchrb/grinch)
+
 **WARNING!**
 
 Grinch is a *lightly* maintained fork of [Cinch](https://github.com/cinchrb/cinch/), which
