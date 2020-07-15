@@ -24,7 +24,8 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
       - name: deps
         run: bundle
-      - name: lint
-        run: bundle exec rubocop -D lib/
+      # TODO(ww): Re-enable this at some point.
+      # - name: lint
+      #   run: bundle exec rubocop -D lib/
       - name: test
         run: bundle exec rake
