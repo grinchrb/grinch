@@ -34,22 +34,22 @@ Installation
 
 You can install the latest Grinch gem using RubyGems
 
-```
-gem install cinch
+```bash
+gem install grinch
 ```
 
 ### GitHub
 
 Alternatively you can check out the latest code directly from Github
 
-```
-git clone https://github.com/woodruffw/grinch
+```bash
+git clone https://github.com/grinchrb/grinch
 ```
 
 Example
 -------
 
-Your typical Hello, World application in Cinch would go something like this:
+Your typical Hello, World application in Grinch would go something like this:
 
 ```ruby
 require 'cinch'
@@ -76,7 +76,7 @@ Features
 ### Documentation
 
 Grinch provides a documented API, which is online for your viewing pleasure
-[here](http://rubydoc.info/gems/cinch/frames).
+[here](http://rubydoc.info/gems/grinch/frames).
 
 ### Object Oriented
 
