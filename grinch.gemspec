@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+require_relative "lib/cinch/version"
+
 Gem::Specification.new do |s|
   s.name = "grinch"
-  s.version = "1.0.1"
+  s.version = Cinch::VERSION
   s.summary = "An IRC Bot Building Framework"
   s.description = "A simple, friendly DSL for creating IRC bots"
   s.authors = ["William Woodruff"]
