@@ -16,10 +16,10 @@ module Cinch
           # (from http://xchat.org/encoding/#hybrid)
           string.force_encoding("UTF-8")
           unless string.valid_encoding?
-            string.force_encoding("CP1252").encode!("UTF-8", { invalid: :replace, undef: :replace })
+            string.force_encoding("CP1252").encode!("UTF-8", invalid: :replace, undef: :replace)
           end
         else
-          string.force_encoding(encoding).encode!({ invalid: :replace, undef: :replace })
+          string.force_encoding(encoding).encode!(invalid: :replace, undef: :replace)
           string = string.chars.select(&:valid_encoding?).join
         end
 
@@ -30,7 +30,7 @@ module Cinch
         string = string.dup
         encoding = "UTF-8" if encoding == :irc
 
-        string.encode!(encoding, { invalid: :replace, undef: :replace }).force_encoding("ASCII-8BIT")
+        string.encode!(encoding, invalid: :replace, undef: :replace).force_encoding("ASCII-8BIT")
       end
     end
   end
