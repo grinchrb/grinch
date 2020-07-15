@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "socket"
 require "ipaddr"
 require "timeout"
@@ -73,16 +75,14 @@ module Cinch
         # @return [void]
         # @note This method blocks.
         def listen
-          begin
-            fd = nil
-            Timeout.timeout(30) do
-              fd, _ = @socket.accept
-            end
-            send_data(fd)
-            fd.close
-          ensure
-            @socket.close
+          fd = nil
+          Timeout.timeout(30) do
+            fd, _ = @socket.accept
           end
+          send_data(fd)
+          fd.close
+        ensure
+          @socket.close
         end
 
         # Seek to `pos` in the data.
@@ -100,16 +100,15 @@ module Cinch
         end
 
         private
+
         def send_data(fd)
           @io.advise(:sequential)
 
           while chunk = @io.read(8096)
-            while true
+            loop do
               rs, ws = IO.select([fd], [fd])
-              if !rs.empty?
-                rs.first.recv(8096)
-              end
-              if !ws.empty?
+              rs.first.recv(8096) unless rs.empty?
+              unless ws.empty?
                 ws.first.write(chunk)
                 break
               end

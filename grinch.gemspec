@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.description = "A simple, friendly DSL for creating IRC bots"
   s.authors = ["William Woodruff"]
   s.email = ["william@yossarian.net"]
-  s.required_ruby_version = ">= 2.4"
+  s.required_ruby_version = ">= 2.5"
   s.files = Dir["LICENSE", "README.md", ".yardopts", "{docs,lib,examples}/**/*"]
   s.homepage = "https://github.com/woodruffw/grinch"
   s.license = "MIT"

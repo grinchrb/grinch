@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cinch
   # LogFilter describes an interface for filtering log messages before
   # they're printed.
@@ -15,7 +17,6 @@ module Cinch
     #   :error, :fatal] event The kind of message
     # @return [String, nil] The modified message, as it should be
     #   logged, or nil if the message shouldn't be logged at all
-    def filter(message, event)
-    end
+    def filter(message, event); end
   end
 end

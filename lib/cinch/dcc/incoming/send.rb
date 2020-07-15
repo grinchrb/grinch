@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "socket"
 require "ipaddr"
 
@@ -50,11 +52,11 @@ module Cinch
         PRIVATE_NETS = [IPAddr.new("fc00::/7"),
                         IPAddr.new("10.0.0.0/8"),
                         IPAddr.new("172.16.0.0/12"),
-                        IPAddr.new("192.168.0.0/16")]
+                        IPAddr.new("192.168.0.0/16")].freeze
 
         # @private
         LOCAL_NETS = [IPAddr.new("127.0.0.0/8"),
-                      IPAddr.new("::1/128")]
+                      IPAddr.new("::1/128")].freeze
 
         # @return [User]
         attr_reader :user
@@ -123,23 +125,23 @@ module Cinch
           end
 
           socket.close
-          return true
+          true
         rescue EOFError
-          return false
+          false
         end
 
         # @return [Boolean] True if the DCC originates from a private ip
         # @see #from_localhost?
         def from_private_ip?
-          ip   = IPAddr.new(@ip)
-          PRIVATE_NETS.any? {|n| n.include?(ip)}
+          ip = IPAddr.new(@ip)
+          PRIVATE_NETS.any? { |n| n.include?(ip) }
         end
 
         # @return [Boolean] True if the DCC originates from localhost
         # @see #from_private_ip?
         def from_localhost?
-          ip   = IPAddr.new(@ip)
-          LOCAL_NETS.any? {|n| n.include?(ip)}
+          ip = IPAddr.new(@ip)
+          LOCAL_NETS.any? { |n| n.include?(ip) }
         end
       end
     end

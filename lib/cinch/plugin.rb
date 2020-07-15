@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/helpers"
 
 module Cinch
@@ -42,11 +44,11 @@ module Cinch
 
       # @return [String]
       def plugin_name=(new_name)
-        if new_name.nil? && self.name
-          @plugin_name = self.name.split("::").last.downcase
-        else
-          @plugin_name = new_name
-        end
+        @plugin_name = if new_name.nil? && name
+                         name.split("::").last.downcase
+                       else
+                         new_name
+                       end
       end
 
       # @return [Array<Matcher>] All matchers
@@ -124,7 +126,7 @@ module Cinch
           @listeners        = []
           @timers           = []
           @help             = nil
-          @hooks            = Hash.new{|h, k| h[k] = []}
+          @hooks            = Hash.new { |h, k| h[k] = [] }
           @prefix           = nil
           @suffix           = nil
           @react_on         = :message
@@ -161,13 +163,13 @@ module Cinch
         when 1
           # {:key => value, ...}
           args.first.each do |key, value|
-            self.send("#{key}=", value)
+            send("#{key}=", value)
           end
         when 2
           # key, value
-          self.send("#{args.first}=", args.last)
+          send("#{args.first}=", args.last)
         else
-          raise ArgumentError # TODO proper error message
+          raise ArgumentError # TODO: proper error message
         end
       end
 
@@ -194,18 +196,16 @@ module Cinch
       # @todo Document match/listener grouping
       def match(pattern, options = {})
         options = {
-          :use_prefix => true,
-          :use_suffix => true,
-          :method => :execute,
-          :group => nil,
-          :prefix => nil,
-          :suffix => nil,
-          :react_on => nil,
-          :strip_colors => false,
+          use_prefix: true,
+          use_suffix: true,
+          method: :execute,
+          group: nil,
+          prefix: nil,
+          suffix: nil,
+          react_on: nil,
+          strip_colors: false,
         }.merge(options)
-        if options[:react_on]
-          options[:react_on] = options[:react_on].to_s.to_sym
-        end
+        options[:react_on] = options[:react_on].to_s.to_sym if options[:react_on]
         matcher = Matcher.new(pattern, *options.values_at(:use_prefix,
                                                           :use_suffix,
                                                           :method,
@@ -229,12 +229,10 @@ module Cinch
       #     execute
       #   @return [Array<Listener>]
       def listen_to(*types)
-        options = {:method => :listen}
-        if types.last.is_a?(Hash)
-          options.merge!(types.pop)
-        end
+        options = { method: :listen }
+        options.merge!(types.pop) if types.last.is_a?(Hash)
 
-        listeners = types.map {|type| Listener.new(type.to_s.to_sym, options[:method])}
+        listeners = types.map { |type| Listener.new(type.to_s.to_sym, options[:method]) }
         @listeners.concat listeners
 
         listeners
@@ -266,7 +264,7 @@ module Cinch
       # @return [Timer]
       # @since 1.1.0
       def timer(interval, options = {})
-        options = {:method => :timer, :threaded => true}.merge(options)
+        options = { method: :timer, threaded: true }.merge(options)
         timer = Timer.new(interval, options, false)
         @timers << timer
 
@@ -287,7 +285,7 @@ module Cinch
       # @return [Hook]
       # @since 1.1.0
       def hook(type, options = {})
-        options = {:for => [:match, :listen_to, :ctcp], :method => :hook, :group => nil}.merge(options)
+        options = { for: %i[match listen_to ctcp], method: :hook, group: nil }.merge(options)
         hook = Hook.new(type, options[:for], options[:method], options[:group])
         __hooks(type) << hook
 
@@ -297,36 +295,34 @@ module Cinch
       # @return [Hash]
       # @api private
       def __hooks(type = nil, events = nil, group = nil)
-        if type.nil?
-          hooks = @hooks
-        else
-          hooks = @hooks[type]
-        end
+        hooks = if type.nil?
+                  @hooks
+                else
+                  @hooks[type]
+                end
 
         if events.nil?
           return hooks
         else
           events = [*events]
-          if hooks.is_a?(Hash)
-            hooks = hooks.map { |k, v| v }
-          end
-          hooks = hooks.select { |hook| (events & hook.for).size > 0 }
+          hooks = hooks.map { |_k, v| v } if hooks.is_a?(Hash)
+          hooks = hooks.reject { |hook| (events & hook.for).empty? }
         end
 
-        return hooks.select { |hook| hook.group.nil? || hook.group == group }
+        hooks.select { |hook| hook.group.nil? || hook.group == group }
       end
 
       # @return [Boolean] True if processing should continue
       # @api private
       def call_hooks(type, event, group, instance, args)
-        stop = __hooks(type, event, group).find { |hook|
+        stop = __hooks(type, event, group).find do |hook|
           # stop after the first hook that returns false
           if hook.method.respond_to?(:call)
             instance.instance_exec(*args, &hook.method) == false
           else
             instance.__send__(hook.method, *args) == false
           end
-        }
+        end
 
         !stop
       end
@@ -336,9 +332,9 @@ module Cinch
       # @since 2.0.0
       # @api private
       def check_for_missing_options(bot)
-        @required_options.select { |option|
-          !bot.config.plugins.options[self].has_key?(option)
-        }
+        @required_options.reject do |option|
+          bot.config.plugins.options[self].key?(option)
+        end
       end
     end
 
@@ -379,13 +375,13 @@ module Cinch
     private :__register_ctcps
 
     def __register_timers
-      @timers = self.class.timers.map {|timer_struct|
+      @timers = self.class.timers.map do |timer_struct|
         @bot.loggers.debug "[plugin] #{self.class.plugin_name}: Registering timer with interval `#{timer_struct.interval}` for method `#{timer_struct.options[:method]}`"
 
-        block = self.method(timer_struct.options[:method])
+        block = method(timer_struct.options[:method])
         options = timer_struct.options.merge(interval: timer_struct.interval)
         Cinch::Timer.new(@bot, options, &block)
-      }
+      end
     end
     private :__register_timers
 
@@ -479,9 +475,7 @@ module Cinch
     # @since 2.0.0
     def unregister
       @bot.loggers.debug "[plugin] #{self.class.plugin_name}: Unloading plugin"
-      @timers.each do |timer|
-        timer.stop
-      end
+      @timers.each(&:stop)
 
       handlers.each do |handler|
         handler.stop
@@ -512,4 +506,4 @@ module Cinch
   end
 end
 
-# TODO more details in "message dropped" debug output
+# TODO: more details in "message dropped" debug output

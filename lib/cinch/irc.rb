@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "timeout"
 require "net/protocol"
 require "cinch/network"
@@ -46,7 +48,7 @@ module Cinch
       tcp_socket = nil
 
       begin
-        Timeout::timeout(@bot.config.timeouts.connect) do
+        Timeout.timeout(@bot.config.timeouts.connect) do
           tcp_socket = TCPSocket.new(@bot.config.server, @bot.config.port, @bot.config.local_host)
         end
       rescue Timeout::Error
@@ -55,7 +57,7 @@ module Cinch
       rescue SocketError => e
         @bot.loggers.warn("Could not connect to the IRC server. Please check your network: #{e.message}")
         return false
-      rescue => e
+      rescue StandardError => e
         @bot.loggers.exception(e)
         return false
       end
@@ -70,7 +72,7 @@ module Cinch
       @socket.read_timeout = @bot.config.timeouts.read
       @queue               = MessageQueue.new(@socket, @bot)
 
-      return true
+      true
     end
 
     # @api private
@@ -79,7 +81,7 @@ module Cinch
     def setup_ssl(socket)
       # require openssl in this method so the bot doesn't break for
       # people who don't have SSL but don't want to use SSL anyway.
-      require 'openssl'
+      require "openssl"
 
       ssl_context = OpenSSL::SSL::SSLContext.new
 
@@ -112,11 +114,11 @@ module Cinch
     # @return [void]
     # @since 2.0.0
     def send_cap_req
-      caps = [:"away-notify", :"multi-prefix", :sasl, :"twitch.tv/tags"] & @network.capabilities
+      caps = %i[away-notify multi-prefix sasl twitch.tv/tags] & @network.capabilities
 
       # InspIRCd doesn't respond to empty REQs, so send an END in that
       # case.
-      if caps.size > 0
+      if !caps.empty?
         send "CAP REQ :" + caps.join(" ")
       else
         send_cap_end
@@ -155,13 +157,13 @@ module Cinch
           @bot.loggers.warn "Connection timed out."
         rescue EOFError
           @bot.loggers.warn "Lost connection."
-        rescue => e
+        rescue StandardError => e
           @bot.loggers.exception(e)
         end
 
         @socket.close
         @bot.handlers.dispatch(:disconnect)
-        # FIXME won't we kill all :disconnect handlers here? prolly
+        # FIXME: won't we kill all :disconnect handlers here? prolly
         # not, as they have 10 seconds to finish. that should be
         # plenty of time
         @bot.handlers.stop_all
@@ -184,7 +186,7 @@ module Cinch
     # @since 2.0.0
     def start_ping_thread
       Thread.new do
-        while true
+        loop do
           sleep @bot.config.ping_interval
           # PING requires a single argument. In our case the value
           # doesn't matter though.
@@ -228,12 +230,13 @@ module Cinch
     # @return [void]
     def parse(input)
       return if input.chomp.empty?
+
       @bot.loggers.incoming(input)
 
       msg          = Message.new(input, @bot)
       events       = [[:catchall]]
 
-      if ["001", "002", "003", "004", "422"].include?(msg.command)
+      if %w[001 002 003 004 422].include?(msg.command)
         @registration << msg.command
         if registered?
           events << [:connect]
@@ -242,29 +245,23 @@ module Cinch
         end
       end
 
-      if ["PRIVMSG", "NOTICE"].include?(msg.command)
+      if %w[PRIVMSG NOTICE].include?(msg.command)
         events << [:ctcp] if msg.ctcp?
-        if msg.channel?
-          events << [:channel]
-        else
-          events << [:private]
-        end
+        events << if msg.channel?
+                    [:channel]
+                  else
+                    [:private]
+                  end
 
-        if msg.command == "PRIVMSG"
-          events << [:message]
-        end
+        events << [:message] if msg.command == "PRIVMSG"
 
-        if msg.action?
-          events << [:action]
-        end
+        events << [:action] if msg.action?
       end
 
       meth = "on_#{msg.command.downcase}"
       __send__(meth, msg, events) if respond_to?(meth, true)
 
-      if msg.error?
-        events << [:error]
-      end
+      events << [:error] if msg.error?
 
       events << [msg.command.downcase.to_sym]
 
@@ -287,7 +284,8 @@ module Cinch
     end
 
     private
-    def set_leaving_user(message, user, events)
+
+    def set_leaving_user(_message, user, events)
       events << [:leaving, user]
     end
 
@@ -299,20 +297,20 @@ module Cinch
       case event
       when "002"
         if msg.params.last =~ /^Your host is .+?, running version (.+)$/
-          case $1
+          case Regexp.last_match(1)
           when /\+snircd\(/
             new_ircd = :snircd
           when /^u[\d\.]+$/
             new_ircd = :ircu
           when /^(.+?)-?\d+/
-            new_ircd = $1.downcase.to_sym
+            new_ircd = Regexp.last_match(1).downcase.to_sym
           end
         elsif msg.params.last == "Your host is jtvchat"
           new_network = :jtv
           new_ircd    = :jtv
         end
       when "004"
-        if msg.params == %w{irc.tinyspeck.com IRC-SLACK gateway}
+        if msg.params == %w[irc.tinyspeck.com IRC-SLACK gateway]
           new_network = :slack
           new_ircd = :slack
         end
@@ -355,7 +353,7 @@ module Cinch
         msg.channel.bans_unsynced << ban
         events << [:ban, ban]
       else
-        msg.channel.bans_unsynced.delete_if {|b| b.mask == ban.mask}
+        msg.channel.bans_unsynced.delete_if { |b| b.mask == ban.mask }
         events << [:unban, ban]
       end
     end
@@ -390,7 +388,7 @@ module Cinch
     end
 
     # @since 2.0.0
-    def on_cap(msg, events)
+    def on_cap(msg, _events)
       case msg.params[1]
       when "LS"
         @network.capabilities.concat msg.message.split(" ").map(&:to_sym)
@@ -407,11 +405,11 @@ module Cinch
     end
 
     # @since 2.0.0
-    def on_connect(msg, events)
+    def on_connect(_msg, _events)
       @bot.modes = @bot.config.modes
     end
 
-    def on_join(msg, events)
+    def on_join(msg, _events)
       if msg.user == @bot
         @bot.channels << msg.channel
         msg.channel.sync_modes
@@ -422,9 +420,7 @@ module Cinch
 
     def on_kick(msg, events)
       target = User(msg.params[1])
-      if target == @bot
-        @bot.channels.delete(msg.channel)
-      end
+      @bot.channels.delete(msg.channel) if target == @bot
       msg.channel.remove_user(target)
 
       set_leaving_user(msg, target, events)
@@ -449,23 +445,20 @@ module Cinch
         parse_channel_modes(msg, events)
         return
       end
-      if msg.params.first == bot.nick
-        parse_bot_modes(msg)
-      end
+      parse_bot_modes(msg) if msg.params.first == bot.nick
     end
 
     def parse_channel_modes(msg, events)
       add_and_remove = @bot.irc.isupport["CHANMODES"]["A"] + @bot.irc.isupport["CHANMODES"]["B"] + @bot.irc.isupport["PREFIX"].keys
 
       param_modes = {
-        :add    => @bot.irc.isupport["CHANMODES"]["C"] + add_and_remove,
-        :remove => add_and_remove
+        add: @bot.irc.isupport["CHANMODES"]["C"] + add_and_remove,
+        remove: add_and_remove,
       }
 
-
       modes, err = ModeParser.parse_modes(msg.params[1], msg.params[2..-1], param_modes)
-      if err != nil
-        if  @network.ircd != :slack || !err.is_a?(ModeParser::TooManyParametersError)
+      unless err.nil?
+        if @network.ircd != :slack || !err.is_a?(ModeParser::TooManyParametersError)
           raise Exceptions::InvalidModeString, err
         end
       end
@@ -483,9 +476,9 @@ module Cinch
           user_events = {
             "o" => "op",
             "v" => "voice",
-            "h" => "halfop"
+            "h" => "halfop",
           }
-          if user_events.has_key?(mode)
+          if user_events.key?(mode)
             event = (direction == :add ? "" : "de") + user_events[mode]
             events << [event.to_sym, target]
           end
@@ -513,9 +506,8 @@ module Cinch
 
     def parse_bot_modes(msg)
       modes, err = ModeParser.parse_modes(msg.params[1], msg.params[2..-1])
-      if err != nil
-        raise Exceptions::InvalidModeString, err
-      end
+      raise Exceptions::InvalidModeString, err unless err.nil?
+
       modes.each do |direction, mode, _|
         if direction == :add
           @bot.modes << mode unless @bot.modes.include?(mode)
@@ -525,13 +517,13 @@ module Cinch
       end
     end
 
-    def on_nick(msg, events)
-      if msg.user == @bot
-        # @bot.set_nick msg.params.last
-        target = @bot
-      else
-        target = msg.user
-      end
+    def on_nick(msg, _events)
+      target = if msg.user == @bot
+                 # @bot.set_nick msg.params.last
+                 @bot
+               else
+                 msg.user
+               end
 
       target.update_nick(msg.params.last)
       target.online = true
@@ -541,18 +533,16 @@ module Cinch
       msg.channel.remove_user(msg.user)
       msg.user.channels_unsynced.delete msg.channel
 
-      if msg.user == @bot
-        @bot.channels.delete(msg.channel)
-      end
+      @bot.channels.delete(msg.channel) if msg.user == @bot
 
       set_leaving_user(msg, msg.user, events)
     end
 
-    def on_ping(msg, events)
+    def on_ping(msg, _events)
       send "PONG :#{msg.params.first}"
     end
 
-    def on_topic(msg, events)
+    def on_topic(msg, _events)
       msg.channel.sync(:topic, msg.params[1])
     end
 
@@ -576,12 +566,10 @@ module Cinch
 
     # @since 2.0.0
     def on_privmsg(msg, events)
-      if msg.user
-        msg.user.online = true
-      end
+      msg.user.online = true if msg.user
 
       if msg.message =~ /^\001DCC SEND (?:"([^"]+)"|(\S+)) (\S+) (\d+)(?: (\d+))?\001$/
-        process_dcc_send($1 || $2, $3, $4, $5, msg, events)
+        process_dcc_send(Regexp.last_match(1) || Regexp.last_match(2), Regexp.last_match(3), Regexp.last_match(4), Regexp.last_match(5), msg, events)
       end
     end
 
@@ -594,7 +582,7 @@ module Cinch
         # If it's not valid, let someone higher up the chain notice
         # that.
         ip   = ip.to_i
-        ip   = [24, 16, 8, 0].collect {|b| (ip >> b) & 255}.join('.')
+        ip   = [24, 16, 8, 0].collect { |b| (ip >> b) & 255 }.join(".")
       end
 
       port = port.to_i
@@ -607,119 +595,117 @@ module Cinch
     end
 
     # @since 2.0.0
-    def on_001(msg, events)
+    def on_001(msg, _events)
       # Ensure that we know our real, possibly truncated or otherwise
       # modified nick.
       @bot.set_nick msg.params.first
     end
 
     # @since 2.0.0
-    def on_002(msg, events)
+    def on_002(msg, _events)
       detect_network(msg, "002")
     end
 
     # @since 2.2.6
-    def on_004(msg, events)
+    def on_004(msg, _events)
       detect_network(msg, "004")
     end
 
-    def on_005(msg, events)
+    def on_005(msg, _events)
       # ISUPPORT
-      @isupport.parse(*msg.params[1..-2].map {|v| v.split(" ")}.flatten)
+      @isupport.parse(*msg.params[1..-2].map { |v| v.split(" ") }.flatten)
       detect_network(msg, "005")
     end
 
     # @since 2.0.0
-    def on_301(msg, events)
+    def on_301(msg, _events)
       # RPL_AWAY
       user = User(msg.params[1])
       away = msg.params.last
 
-      if @whois_updates[user]
-        update_whois(user, {:away => away})
-      end
+      update_whois(user, { away: away }) if @whois_updates[user]
     end
 
     # @since 1.1.0
-    def on_307(msg, events)
+    def on_307(msg, _events)
       # RPL_WHOISREGNICK
       user = User(msg.params[1])
-      update_whois(user, {:registered => true})
+      update_whois(user, { registered: true })
     end
 
-    def on_311(msg, events)
+    def on_311(msg, _events)
       # RPL_WHOISUSER
       user = User(msg.params[1])
       update_whois(user, {
-                     :user => msg.params[2],
-                     :host => msg.params[3],
-                     :realname => msg.params[5],
+                     user: msg.params[2],
+                     host: msg.params[3],
+                     realname: msg.params[5],
                    })
     end
 
-    def on_313(msg, events)
+    def on_313(msg, _events)
       # RPL_WHOISOPERATOR
       user = User(msg.params[1])
-      update_whois(user, {:oper? => true})
+      update_whois(user, { oper?: true })
     end
 
-    def on_317(msg, events)
+    def on_317(msg, _events)
       # RPL_WHOISIDLE
       user = User(msg.params[1])
       update_whois(user, {
-                     :idle => msg.params[2].to_i,
-                     :signed_on_at => Time.at(msg.params[3].to_i),
+                     idle: msg.params[2].to_i,
+                     signed_on_at: Time.at(msg.params[3].to_i),
                    })
     end
 
-    def on_318(msg, events)
+    def on_318(msg, _events)
       # RPL_ENDOFWHOIS
       user = User(msg.params[1])
       user.end_of_whois(@whois_updates[user])
       @whois_updates.delete user
     end
 
-    def on_319(msg, events)
+    def on_319(msg, _events)
       # RPL_WHOISCHANNELS
       user     = User(msg.params[1])
-      channels = msg.params[2].scan(/[#{@isupport["CHANTYPES"].join}][^ ]+/o).map {|c| Channel(c) }
-      update_whois(user, {:channels => channels})
+      channels = msg.params[2].scan(/[#{@isupport["CHANTYPES"].join}][^ ]+/o).map { |c| Channel(c) }
+      update_whois(user, { channels: channels })
     end
 
-    def on_324(msg, events)
+    def on_324(msg, _events)
       # RPL_CHANNELMODEIS
       modes     = {}
       arguments = msg.params[3..-1]
 
       msg.params[2][1..-1].split("").each do |mode|
-        if (@isupport["CHANMODES"]["B"] + @isupport["CHANMODES"]["C"]).include?(mode)
-          modes[mode] = arguments.shift
-        else
-          modes[mode] = true
-        end
+        modes[mode] = if (@isupport["CHANMODES"]["B"] + @isupport["CHANMODES"]["C"]).include?(mode)
+                        arguments.shift
+                      else
+                        true
+                      end
       end
 
       msg.channel.sync(:modes, modes, false)
     end
 
-    def on_330(msg, events)
+    def on_330(msg, _events)
       # RPL_WHOISACCOUNT
       user     = User(msg.params[1])
       authname = msg.params[2]
-      update_whois(user, {:authname => authname})
+      update_whois(user, { authname: authname })
     end
 
-    def on_331(msg, events)
+    def on_331(msg, _events)
       # RPL_NOTOPIC
       msg.channel.sync(:topic, "")
     end
 
-    def on_332(msg, events)
+    def on_332(msg, _events)
       # RPL_TOPIC
       msg.channel.sync(:topic, msg.params[2])
     end
 
-    def on_352(msg, events)
+    def on_352(msg, _events)
       # RPL_WHOREPLY
       # "<channel> <user> <host> <server> <nick> <H|G>[*][@|+] :<hopcount> <real name>"
       _, channel, user, host, _, nick, _, hopsrealname = msg.params
@@ -731,7 +717,7 @@ module Cinch
       user_object.sync(:realname, realname, true)
     end
 
-    def on_354(msg, events)
+    def on_354(msg, _events)
       # RPL_WHOSPCRPL
       # We are using the following format: %acfhnru
 
@@ -750,41 +736,37 @@ module Cinch
       user_object.sync(:authname, account == "0" ? nil : account, true)
     end
 
-    def on_353(msg, events)
+    def on_353(msg, _events)
       # RPL_NAMEREPLY
-      unless @in_lists.include?(:names)
-        msg.channel.clear_users
-      end
+      msg.channel.clear_users unless @in_lists.include?(:names)
       @in_lists << :names
 
       msg.params[3].split(" ").each do |user|
         m = user.match(/^([#{@isupport["PREFIX"].values.join}]+)/)
         if m
-          prefixes = m[1].split("").map {|s| @isupport["PREFIX"].key(s)}
-          nick   = user[prefixes.size..-1]
+          prefixes = m[1].split("").map { |s| @isupport["PREFIX"].key(s) }
+          nick = user[prefixes.size..-1]
         else
-          nick   = user
+          nick = user
           prefixes = []
         end
-        user        = User(nick)
+        user = User(nick)
         user.online = true
         msg.channel.add_user(user, prefixes)
         user.channels_unsynced << msg.channel unless user.channels_unsynced.include?(msg.channel)
       end
     end
 
-    def on_366(msg, events)
+    def on_366(msg, _events)
       # RPL_ENDOFNAMES
       @in_lists.delete :names
       msg.channel.mark_as_synced(:users)
     end
 
     # @version 2.0.0
-    def on_367(msg, events)
+    def on_367(msg, _events)
       # RPL_BANLIST
-      unless @in_lists.include?(:bans)
-        msg.channel.bans_unsynced.clear
-      end
+      msg.channel.bans_unsynced.clear unless @in_lists.include?(:bans)
       @in_lists << :bans
 
       mask = msg.params[2]
@@ -794,18 +776,14 @@ module Cinch
         mask = "%s!%s@%s" % [mask, mask, mask + ".irc.justin.tv"]
       end
 
-      if msg.params[3]
-        by = User(msg.params[3].split("!").first)
-      else
-        by = nil
-      end
+      by = (User(msg.params[3].split("!").first) if msg.params[3])
 
       at  = Time.at(msg.params[4].to_i)
       ban = Ban.new(mask, by, at)
       msg.channel.bans_unsynced << ban
     end
 
-    def on_368(msg, events)
+    def on_368(msg, _events)
       # RPL_ENDOFBANLIST
       if @in_lists.include?(:bans)
         @in_lists.delete :bans
@@ -817,64 +795,62 @@ module Cinch
       msg.channel.mark_as_synced(:bans)
     end
 
-    def on_386(msg, events)
+    def on_386(msg, _events)
       # RPL_QLIST
-      unless @in_lists.include?(:owners)
-        msg.channel.owners_unsynced.clear
-      end
+      msg.channel.owners_unsynced.clear unless @in_lists.include?(:owners)
       @in_lists << :owners
 
       owner = User(msg.params[2])
       msg.channel.owners_unsynced << owner
     end
 
-    def on_387(msg, events)
+    def on_387(msg, _events)
       # RPL_ENDOFQLIST
       if @in_lists.include?(:owners)
         @in_lists.delete :owners
       else
-        #we never received an owner, yet an end of list -> no owners
+        # we never received an owner, yet an end of list -> no owners
         msg.channel.owners_unsynced.clear
       end
 
       msg.channel.mark_as_synced(:owners)
     end
 
-    def on_396(msg, events)
+    def on_396(msg, _events)
       # RPL_HOSTHIDDEN
       # note: designed for freenode
       User(msg.params[0]).sync(:host, msg.params[1], true)
     end
 
-    def on_401(msg, events)
+    def on_401(msg, _events)
       # ERR_NOSUCHNICK
       if user = @bot.user_list.find(msg.params[1])
-        update_whois(user, {:unknown? => true})
+        update_whois(user, { unknown?: true })
       end
     end
 
-    def on_402(msg, events)
+    def on_402(msg, _events)
       # ERR_NOSUCHSERVER
 
       if user = @bot.user_list.find(msg.params[1]) # not _ensured, we only want a user that already exists
-        user.end_of_whois({:unknown? => true})
+        user.end_of_whois({ unknown?: true })
         @whois_updates.delete user
-        # TODO freenode specific, test on other IRCd
+        # TODO: freenode specific, test on other IRCd
       end
     end
 
-    def on_433(msg, events)
+    def on_433(msg, _events)
       # ERR_NICKNAMEINUSE
       @bot.nick = @bot.generate_next_nick!(msg.params[1])
     end
 
-    def on_671(msg, events)
+    def on_671(msg, _events)
       user = User(msg.params[1])
-      update_whois(user, {:secure? => true})
+      update_whois(user, { secure?: true })
     end
 
     # @since 2.0.0
-    def on_730(msg, events)
+    def on_730(msg, _events)
       # RPL_MONONLINE
       msg.params.last.split(",").each do |mask|
         user = User(Mask.new(mask).nick)
@@ -884,7 +860,7 @@ module Cinch
     end
 
     # @since 2.0.0
-    def on_731(msg, events)
+    def on_731(msg, _events)
       # RPL_MONOFFLINE
       msg.params.last.split(",").each do |nick|
         user = User(nick)
@@ -894,28 +870,28 @@ module Cinch
     end
 
     # @since 2.0.0
-    def on_734(msg, events)
+    def on_734(msg, _events)
       # ERR_MONLISTFULL
       user = User(msg.params[2])
       user.monitored = false
     end
 
     # @since 2.0.0
-    def on_903(msg, events)
+    def on_903(_msg, _events)
       # SASL authentication successful
       @bot.loggers.info "[SASL] SASL authentication with #{@sasl_current_method.mechanism_name} successful"
       send_cap_end
     end
 
     # @since 2.0.0
-    def on_904(msg, events)
+    def on_904(_msg, _events)
       # SASL authentication failed
       @bot.loggers.info "[SASL] SASL authentication with #{@sasl_current_method.mechanism_name} failed"
       send_sasl
     end
 
     # @since 2.0.0
-    def on_authenticate(msg, events)
+    def on_authenticate(msg, _events)
       send "AUTHENTICATE " + @sasl_current_method.generate(@bot.config.sasl.username,
                                                            @bot.config.sasl.password,
                                                            msg.params.last)

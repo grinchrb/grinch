@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/logger"
 module Cinch
   class Logger
@@ -10,10 +12,12 @@ module Cinch
       # (see Logger#log)
       def log(messages, event, level = event)
         return if event != :incoming
+
         super
       end
 
       private
+
       def format_incoming(message)
         Time.now.strftime("%m/%d/%Y %H:%M:%S ") + message
       end

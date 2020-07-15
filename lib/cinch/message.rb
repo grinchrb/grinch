@@ -108,11 +108,11 @@ module Cinch
       @params  = parse_params(raw_params)
       @tags    = parse_tags(tags)
 
-      @user    = parse_user
+      @user = parse_user
       @channel, @statusmsg_mode = parse_channel
-      @target  = @channel || @user
-      @server  = parse_server
-      @error   = parse_error
+      @target = @channel || @user
+      @server = parse_server
+      @error = parse_error
       @message = parse_message
 
       @ctcp_message = parse_ctcp_message
@@ -333,9 +333,9 @@ module Cinch
       statusmsg = @bot.irc.isupport["STATUSMSG"]
       if statusmsg.include?(s[0]) && chantypes.include?(s[1])
         status = @bot.irc.isupport["PREFIX"].invert[s[0]]
-        return s[1..-1], status
+        [s[1..-1], status]
       elsif chantypes.include?(s[0])
-        return s, nil
+        [s, nil]
       end
     end
 

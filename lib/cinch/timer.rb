@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/helpers"
 
 module Cinch
@@ -41,8 +43,8 @@ module Cinch
     #   will stop. This value will automatically reset after
     #   restarting the timer.
     attr_accessor :shots
-    alias_method :threaded?, :threaded
-    alias_method :started?, :started
+    alias threaded? threaded
+    alias started? started
 
     # @return [ThreadGroup]
     # @api private
@@ -62,7 +64,7 @@ module Cinch
     # @option options [Boolean] :stop_automaticall (true) If true, the
     #   timer will automatically stop when the bot disconnects.
     def initialize(bot, options, &block)
-      options = {:threaded => true, :shots => Float::INFINITY, :start_automatically => true, :stop_automatically => true}.merge(options)
+      options = { threaded: true, shots: Float::INFINITY, start_automatically: true, stop_automatically: true }.merge(options)
 
       @bot        = bot
       @interval   = options[:interval].to_f
@@ -76,13 +78,13 @@ module Cinch
       @thread_group = ThreadGroup.new
 
       if options[:start_automatically]
-        @bot.on :connect, //, self do |m, timer|
+        @bot.on :connect, //, self do |_m, timer|
           timer.start
         end
       end
 
       if options[:stop_automatically]
-        @bot.on :disconnect, //, self do |m, timer|
+        @bot.on :disconnect, //, self do |_m, timer|
           timer.stop
         end
       end
@@ -104,7 +106,7 @@ module Cinch
       @shots = @orig_shots
 
       @thread_group.add Thread.new {
-        while @shots > 0 do
+        while @shots > 0
           sleep @interval
           if threaded?
             Thread.new do
@@ -133,7 +135,7 @@ module Cinch
 
       @bot.loggers.debug "[timer] Stopping timer #{self}"
 
-      @thread_group.list.each { |thread| thread.kill }
+      @thread_group.list.each(&:kill)
       @started = false
     end
 

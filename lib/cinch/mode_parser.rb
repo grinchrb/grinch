@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/exceptions"
 
 module Cinch
@@ -16,7 +18,7 @@ module Cinch
     #   A mapping describing which modes require parameters
     # @return [(Array<(Symbol<:add, :remove>, String<char>, String<param>), foo)]
     def self.parse_modes(modes, params, param_modes = {})
-      if modes.size == 0
+      if modes.empty?
         return nil, ErrEmptyString
         # raise Exceptions::InvalidModeString, 'Empty mode string'
       end
@@ -47,8 +49,8 @@ module Cinch
           count = 0
         else
           param = nil
-          if param_modes.has_key?(direction) && param_modes[direction].include?(ch)
-            if params.size > 0
+          if param_modes.key?(direction) && param_modes[direction].include?(ch)
+            if !params.empty?
               param = params.shift
             else
               return changes, NotEnoughParametersError.new(ch)
@@ -60,7 +62,7 @@ module Cinch
         end
       end
 
-      if params.size > 0
+      unless params.empty?
         return changes, TooManyParametersError.new(modes, params)
         # raise Exceptions::InvalidModeString, 'Too many parameters: %s %s' % [modes, params]
       end
@@ -70,7 +72,7 @@ module Cinch
         # raise Exceptions::InvalidModeString, 'Empty mode sequence: %s' % modes
       end
 
-      return changes, nil
+      [changes, nil]
     end
   end
 end

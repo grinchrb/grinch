@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
+
 require "set"
 require "cinch/target"
 
@@ -49,24 +50,24 @@ module Cinch
     def initialize(name, bot)
       @bot    = bot
       @name   = name
-      @users  = Hash.new {|h, k| h[k] = []}
+      @users  = Hash.new { |h, k| h[k] = [] }
       @bans   = []
       @owners = []
 
       @modes = {}
-      # TODO raise if not a channel
+      # TODO: raise if not a channel
 
       @topic = nil
 
       @in_channel = false
 
-      @synced_attributes  = Set.new
-      @when_requesting_synced_attribute = lambda {|attr|
+      @synced_attributes = Set.new
+      @when_requesting_synced_attribute = lambda { |attr|
         if @in_channel && attr == :topic && !attribute_synced?(:topic)
           # Even if we are in the channel, if there's no topic set,
           # the attribute won't be synchronised yet. Explicitly
           # request the topic.
-          @bot.irc.send "TOPIC #@name"
+          @bot.irc.send "TOPIC #{@name}"
           next
         end
 
@@ -74,21 +75,21 @@ module Cinch
           unsync(attr)
           case attr
           when :users
-            @bot.irc.send "NAMES #@name"
+            @bot.irc.send "NAMES #{@name}"
           when :topic
-            @bot.irc.send "TOPIC #@name"
+            @bot.irc.send "TOPIC #{@name}"
           when :bans
-            @bot.irc.send "MODE #@name +b"
+            @bot.irc.send "MODE #{@name} +b"
           when :owners
             if @bot.irc.network.owner_list_mode
-              @bot.irc.send "MODE #@name +#{@bot.irc.network.owner_list_mode}"
+              @bot.irc.send "MODE #{@name} +#{@bot.irc.network.owner_list_mode}"
             else
               # the current IRCd does not support channel owners, so
               # just mark the empty array as synced
               mark_as_synced(:owners)
             end
           when :modes
-            @bot.irc.send "MODE #@name"
+            @bot.irc.send "MODE #{@name}"
           end
         end
       }
@@ -101,7 +102,7 @@ module Cinch
     # @since 1.1.0
     # @version 1.1.2
     def has_user?(user)
-      @users.has_key?(User(user))
+      @users.key?(User(user))
     end
 
     # @return [Boolean] true if `user` is opped in the channel
@@ -128,25 +129,25 @@ module Cinch
     # @return [Array<User>] All ops in the channel
     # @since 2.0.0
     def ops
-      @users.select {|user, modes| modes.include?("o")}.keys
+      @users.select { |_user, modes| modes.include?("o") }.keys
     end
 
     # @return [Array<User>] All half-ops in the channel
     # @since 2.0.0
     def half_ops
-      @users.select {|user, modes| modes.include?("h")}.keys
+      @users.select { |_user, modes| modes.include?("h") }.keys
     end
 
     # @return [Array<User>] All voiced users in the channel
     # @since 2.0.0
     def voiced
-      @users.select {|user, modes| modes.include?("v")}.keys
+      @users.select { |_user, modes| modes.include?("v") }.keys
     end
 
     # @return [Array<User>] All admins in the channel
     # @since 2.0.0
     def admins
-      @users.select {|user, modes| modes.include?("a")}.keys
+      @users.select { |_user, modes| modes.include?("a") }.keys
     end
     # @endgroup
 
@@ -157,7 +158,7 @@ module Cinch
     end
 
     def limit=(val)
-      if val == -1 or val.nil?
+      if (val == -1) || val.nil?
         mode "-l"
       else
         mode "+l #{val}"
@@ -168,7 +169,7 @@ module Cinch
     def secret
       @modes["s"]
     end
-    alias_method :secret?, :secret
+    alias secret? secret
 
     def secret=(bool)
       if bool
@@ -182,7 +183,7 @@ module Cinch
     def moderated
       @modes["m"]
     end
-    alias_method :moderated?, :moderated
+    alias moderated? moderated
 
     def moderated=(bool)
       if bool
@@ -196,7 +197,7 @@ module Cinch
     def invite_only
       @modes["i"]
     end
-    alias_method :invite_only?, :invite_only
+    alias invite_only? invite_only
 
     def invite_only=(bool)
       if bool
@@ -228,14 +229,14 @@ module Cinch
       unsync :owners
 
       if @bot.irc.isupport["WHOX"]
-        @bot.irc.send "WHO #@name %acfhnru"
+        @bot.irc.send "WHO #{@name} %acfhnru"
       else
-        @bot.irc.send "WHO #@name"
+        @bot.irc.send "WHO #{@name}"
       end
-      @bot.irc.send "MODE #@name +b" # bans
-      @bot.irc.send "MODE #@name"
+      @bot.irc.send "MODE #{@name} +b" # bans
+      @bot.irc.send "MODE #{@name}"
       if @bot.irc.network.owner_list_mode
-        @bot.irc.send "MODE #@name +#{@bot.irc.network.owner_list_mode}"
+        @bot.irc.send "MODE #{@name} +#{@bot.irc.network.owner_list_mode}"
       else
         mark_as_synced :owners
       end
@@ -251,7 +252,7 @@ module Cinch
     def ban(target)
       mask = Mask.from(target)
 
-      @bot.irc.send "MODE #@name +b #{mask}"
+      @bot.irc.send "MODE #{@name} +b #{mask}"
       mask
     end
 
@@ -263,7 +264,7 @@ module Cinch
     def unban(target)
       mask = Mask.from(target)
 
-      @bot.irc.send "MODE #@name -b #{mask}"
+      @bot.irc.send "MODE #{@name} -b #{mask}"
       mask
     end
 
@@ -272,7 +273,7 @@ module Cinch
     # @param [String, User] user the user to op
     # @return [void]
     def op(user)
-      @bot.irc.send "MODE #@name +o #{user}"
+      @bot.irc.send "MODE #{@name} +o #{user}"
     end
 
     # Deops a user.
@@ -280,7 +281,7 @@ module Cinch
     # @param [String, User] user the user to deop
     # @return [void]
     def deop(user)
-      @bot.irc.send "MODE #@name -o #{user}"
+      @bot.irc.send "MODE #{@name} -o #{user}"
     end
 
     # Voices a user.
@@ -288,7 +289,7 @@ module Cinch
     # @param [String, User] user the user to voice
     # @return [void]
     def voice(user)
-      @bot.irc.send "MODE #@name +v #{user}"
+      @bot.irc.send "MODE #{@name} +v #{user}"
     end
 
     # Devoices a user.
@@ -296,7 +297,7 @@ module Cinch
     # @param [String, User] user the user to devoice
     # @return [void]
     def devoice(user)
-      @bot.irc.send "MODE #@name -v #{user}"
+      @bot.irc.send "MODE #{@name} -v #{user}"
     end
 
     # Invites a user to the channel.
@@ -304,7 +305,7 @@ module Cinch
     # @param [String, User] user the user to invite
     # @return [void]
     def invite(user)
-      @bot.irc.send("INVITE #{user} #@name")
+      @bot.irc.send("INVITE #{user} #{@name}")
     end
 
     undef_method(:topic=)
@@ -318,7 +319,7 @@ module Cinch
         raise Exceptions::TopicTooLong, new_topic
       end
 
-      @bot.irc.send "TOPIC #@name :#{new_topic}"
+      @bot.irc.send "TOPIC #{@name} :#{new_topic}"
     end
 
     # Kicks a user from the channel.
@@ -332,7 +333,7 @@ module Cinch
         raise Exceptions::KickReasonTooLong, reason
       end
 
-      @bot.irc.send("KICK #@name #{user} :#{reason}")
+      @bot.irc.send("KICK #{@name} #{user} :#{reason}")
     end
 
     # Removes a user from the channel.
@@ -347,7 +348,7 @@ module Cinch
     # @param [String] reason a reason for the removal
     # @return [void]
     def remove(user, reason = nil)
-      @bot.irc.send("REMOVE #@name #{user} :#{reason}")
+      @bot.irc.send("REMOVE #{@name} #{user} :#{reason}")
     end
 
     # Sets or unsets modes. Most of the time you won't need this but
@@ -358,7 +359,7 @@ module Cinch
     # @example
     #   channel.mode "+n"
     def mode(s)
-      @bot.irc.send "MODE #@name #{s}"
+      @bot.irc.send "MODE #{@name} #{s}"
     end
 
     # Causes the bot to part from the channel.
@@ -366,7 +367,7 @@ module Cinch
     # @param [String] message the part message.
     # @return [void]
     def part(message = nil)
-      @bot.irc.send "PART #@name :#{message}"
+      @bot.irc.send "PART #{@name} :#{message}"
     end
 
     # Joins the channel
@@ -375,9 +376,7 @@ module Cinch
     #   specified but @key is set, @key will be used
     # @return [void]
     def join(key = nil)
-      if key.nil? and self.key != true
-        key = self.key
-      end
+      key = self.key if key.nil? && (self.key != true)
       @bot.irc.send "JOIN #{[@name, key].compact.join(" ")}"
     end
 
@@ -409,7 +408,7 @@ module Cinch
     # @note The aliases `msg` and `privmsg` are deprecated and will be
     #   removed in a future version.
     def send(text, notice = false)
-      # TODO deprecate 'notice' argument
+      # TODO: deprecate 'notice' argument
       text = text.to_s
       if @modes["c"]
         # Remove all formatting and colors if the channel doesn't
@@ -418,8 +417,8 @@ module Cinch
       end
       super(text, notice)
     end
-    alias_method :msg, :send # deprecated
-    alias_method :privmsg, :send # deprecated
+    alias msg send # deprecated
+    alias privmsg send # deprecated
     undef_method(:msg) # yardoc hack
     undef_method(:privmsg) # yardoc hack
 
@@ -447,7 +446,7 @@ module Cinch
     def to_s
       @name
     end
-    alias_method :to_str, :to_s # deprecated
+    alias to_str to_s # deprecated
     undef_method(:to_str) # yardoc hack
 
     def to_str

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "openssl"
 require "base64"
 require "cinch/sasl/mechanism"
@@ -21,13 +23,13 @@ module Cinch
           payload = payload.dup
 
           3.times do
-            size = payload.unpack("n").first
+            size = payload.unpack1("n")
             payload.slice!(0, 2)
-            pgy << payload.unpack("a#{size}").first
+            pgy << payload.unpack1("a#{size}")
             payload.slice!(0, size)
           end
 
-          pgy.map {|i| OpenSSL::BN.new(i, 2).to_i}
+          pgy.map { |i| OpenSSL::BN.new(i, 2).to_i }
         end
 
         # @param [String] user

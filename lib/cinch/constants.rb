@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cinch
   # All standard and some non-standard numeric replies used by the IRC
   # protocol.
@@ -274,7 +276,7 @@ module Cinch
     # revisions) and the &lt;debuglevel&gt; is used to indicate if the
     # server is running in "debug mode".
     #
-    #The "comments" field may contain any comments about the version or
+    # The "comments" field may contain any comments about the version or
     # further version details.
     RPL_VERSION  = 351
 

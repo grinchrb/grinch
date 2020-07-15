@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/cached_list"
 
 module Cinch

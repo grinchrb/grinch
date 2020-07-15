@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cinch
   # This class allows querying the IRC network for its name and used
   # server software as well as certain non-standard behaviour.

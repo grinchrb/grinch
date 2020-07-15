@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cinch
   # @since 2.0.0
   class Handler
@@ -39,16 +41,16 @@ module Cinch
     # @option options [Array] :args ([]) Additional arguments to pass
     #   to the block
     def initialize(bot, event, pattern, options = {}, &block)
-      options              = {
-        :group => nil,
-        :execute_in_callback => false,
-        :strip_colors => false,
-        :args => []
+      options = {
+        group: nil,
+        execute_in_callback: false,
+        strip_colors: false,
+        args: [],
       }.merge(options)
-      @bot                 = bot
-      @event               = event
-      @pattern             = pattern
-      @group               = options[:group]
+      @bot = bot
+      @event = event
+      @pattern = pattern
+      @group = options[:group]
       @execute_in_callback = options[:execute_in_callback]
       @strip_colors        = options[:strip_colors]
       @args                = options[:args]
@@ -89,7 +91,7 @@ module Cinch
     def call(message, captures, arguments)
       bargs = captures + arguments
 
-      thread = Thread.new {
+      thread = Thread.new do
         @bot.loggers.debug "[New thread] For #{self}: #{Thread.current} -- #{@thread_group.list.size} in total."
 
         begin
@@ -98,12 +100,12 @@ module Cinch
           else
             @block.call(message, *@args, *bargs)
           end
-        rescue => e
+        rescue StandardError => e
           @bot.loggers.exception(e)
         ensure
           @bot.loggers.debug "[Thread done] For #{self}: #{Thread.current} -- #{@thread_group.list.size - 1} remaining."
         end
-      }
+      end
 
       @thread_group.add(thread)
       thread
@@ -111,7 +113,7 @@ module Cinch
 
     # @return [String]
     def to_s
-      # TODO maybe add the number of running threads to the output?
+      # TODO: maybe add the number of running threads to the output?
       "#<Cinch::Handler @event=#{@event.inspect} pattern=#{@pattern.inspect}>"
     end
   end
