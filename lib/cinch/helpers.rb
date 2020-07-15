@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
+
 module Cinch
   # The Helpers module contains a number of methods whose purpose is
   # to make writing plugins easier by hiding parts of the API. The
@@ -22,6 +23,7 @@ module Cinch
     # @since 2.0.0
     def Target(target)
       return target if target.is_a?(Target)
+
       Target.new(target, bot)
     end
 
@@ -36,6 +38,7 @@ module Cinch
     # @since 1.0.0
     def Channel(channel)
       return channel if channel.is_a?(Channel)
+
       bot.channel_list.find_ensured(channel)
     end
 
@@ -51,6 +54,7 @@ module Cinch
     # @since 1.0.0
     def User(user)
       return user if user.is_a?(User)
+
       if user == bot.nick
         bot
       else
@@ -91,14 +95,12 @@ module Cinch
     # @return [Timer]
     # @since 2.0.0
     def Timer(interval, options = {}, &block)
-      options = {:method => :timer, :threaded => true, :interval => interval}.merge(options)
-      block ||= self.method(options[:method])
+      options = { method: :timer, threaded: true, interval: interval }.merge(options)
+      block ||= method(options[:method])
       timer   = Cinch::Timer.new(bot, options, &block)
       timer.start
 
-      if self.respond_to?(:timers)
-        timers << timer
-      end
+      timers << timer if respond_to?(:timers)
 
       timer
     end
@@ -119,19 +121,17 @@ module Cinch
     # @return [void]
     # @since 2.0.0
     def rescue_exception
-      begin
-        yield
-      rescue => e
-        bot.loggers.exception(e)
-      end
+      yield
+    rescue StandardError => e
+      bot.loggers.exception(e)
     end
 
     # (see Logger#log)
     def log(messages, event = :debug, level = event)
-      if self.is_a?(Cinch::Plugin)
-        messages = Array(messages).map {|m|
+      if is_a?(Cinch::Plugin)
+        messages = Array(messages).map do |m|
           "[#{self.class}] " + m
-        }
+        end
       end
       @bot.loggers.log(messages, event, level)
     end
@@ -183,7 +183,7 @@ module Cinch
     def Format(*settings, string)
       Formatting.format(*settings, string)
     end
-    alias_method :Color, :Format # deprecated
+    alias Color Format # deprecated
     undef_method(:Color) # yardoc hack
 
     def Color(*args)
@@ -218,7 +218,7 @@ module Cinch
     # @return [String] The filtered string
     # @since 2.2.0
     def self.sanitize(string)
-      string.gsub(/[\x00-\x08\x0a-\x1f\x7f]/, '')
+      string.gsub(/[\x00-\x08\x0a-\x1f\x7f]/, "")
     end
 
     # (see Formatting.unformat)

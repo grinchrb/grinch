@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
+
 require "cinch/open_ended_queue"
 
 module Cinch
@@ -11,7 +12,7 @@ module Cinch
       @socket = socket
       @bot    = bot
 
-      @queues            = {:generic => OpenEndedQueue.new}
+      @queues            = { generic: OpenEndedQueue.new }
       @queues_to_process = Queue.new
       @queued_queues     = Set.new
 
@@ -61,6 +62,7 @@ module Cinch
     end
 
     private
+
     def wait
       if @log.size > 1
         mps            = @bot.config.messages_per_second || @bot.irc.network.default_messages_per_second
@@ -74,7 +76,7 @@ module Cinch
         if effective_size <= 0
           @log.clear
         elsif effective_size >= max_queue_size
-          sleep 1.0/mps
+          sleep 1.0 / mps
         end
       end
     end
@@ -102,6 +104,5 @@ module Cinch
         @bot.loggers.error "Could not send message (connectivity problems): #{message}"
       end
     end
-
   end # class MessageQueue
 end

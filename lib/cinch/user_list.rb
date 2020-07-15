@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cinch/cached_list"
 
 module Cinch
@@ -22,7 +24,8 @@ module Cinch
     # @return [User]
     # @see Bot#User
     def find_ensured(*args)
-      user, host = nil, nil
+      user = nil
+      host = nil
       case args.size
       when 1
         nick = args.first
@@ -35,15 +38,11 @@ module Cinch
         raise ArgumentError
       end
 
-      if nick == @bot.nick
-        user_obj = @bot
-      end
+      user_obj = @bot if nick == @bot.nick
 
       downcased_nick = nick.irc_downcase(@bot.irc.isupport["CASEMAPPING"])
       @mutex.synchronize do
-        if user_obj.nil?
-          user_obj = @cache[downcased_nick] ||= User.new(*bargs, @bot)
-        end
+        user_obj = @cache[downcased_nick] ||= User.new(*bargs, @bot) if user_obj.nil?
         if user && host
           # Explicitly set user and host whenever we request a User
           # object to update them on e.g. JOIN.
@@ -59,9 +58,7 @@ module Cinch
     # @param [String] nick nick of a user
     # @return [User, nil]
     def find(nick)
-      if nick == @bot.nick
-        return @bot
-      end
+      return @bot if nick == @bot.nick
 
       downcased_nick = nick.irc_downcase(@bot.irc.isupport["CASEMAPPING"])
       @mutex.synchronize do
@@ -81,7 +78,7 @@ module Cinch
     # @api private
     # @return [void]
     def delete(user)
-      @cache.delete_if {|n, u| u == user }
+      @cache.delete_if { |_n, u| u == user }
     end
   end
 end

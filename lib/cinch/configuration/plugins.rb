@@ -1,17 +1,19 @@
+# frozen_string_literal: true
+
 require "cinch/configuration"
 
 module Cinch
   class Configuration
     # @since 2.0.0
     class Plugins < Configuration
-      KnownOptions = [:plugins, :prefix, :suffix, :options]
+      KnownOptions = %i[plugins prefix suffix options].freeze
 
       def self.default_config
         {
-          :plugins => [],
-          :prefix  => /^!/,
-          :suffix  => nil,
-          :options => Hash.new {|h,k| h[k] = {}},
+          plugins: [],
+          prefix: /^!/,
+          suffix: nil,
+          options: Hash.new { |h, k| h[k] = {} },
         }
       end
 
@@ -20,7 +22,7 @@ module Cinch
         new_config.each do |option, value|
           case option
           when :plugins
-            _new_config[option] = value.map{|v| Cinch::Utilities::Kernel.string_to_const(v)}
+            _new_config[option] = value.map { |v| Cinch::Utilities::Kernel.string_to_const(v) }
           when :options
             _value = self[:options]
             value.each do |k, v|

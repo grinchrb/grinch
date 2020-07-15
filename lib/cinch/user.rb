@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
+
 require "cinch/target"
 require "timeout"
 
@@ -37,7 +38,7 @@ module Cinch
     # @return [Boolean]
     attr_reader :synced
     # @since 2.1.0
-    alias_method :synced?, :synced
+    alias synced? synced
 
     # @return [Boolean]
     # @api private
@@ -74,7 +75,7 @@ module Cinch
     def unknown
       attr(:unknown?, true, false)
     end
-    alias_method :unknown?, :unknown
+    alias unknown? unknown
 
     # @note This attribute will be updated by various events, but
     # unless {#monitor} is being used, this information cannot be
@@ -82,7 +83,7 @@ module Cinch
     def online
       attr(:online?, true, false)
     end
-    alias_method :online?, :online
+    alias online? online
 
     def channels
       attr(:channels, true, false)
@@ -91,13 +92,13 @@ module Cinch
     def secure
       attr(:secure?, true, false)
     end
-    alias_method :secure?, :secure
+    alias secure? secure
 
     # @since 2.1.0
     def oper
       attr(:oper?, true, false)
     end
-    alias_method :oper?, :oper
+    alias oper? oper
 
     # @private
     def user_unsynced
@@ -180,7 +181,7 @@ module Cinch
     # @note The attribute writer is in fact part of the private API
     attr_reader :monitored
     # @since 2.1.0
-    alias_method :monitored?, :monitored
+    alias monitored? monitored
 
     # @api private
     attr_writer :monitored
@@ -189,18 +190,18 @@ module Cinch
     #   class. Use {UserList#find_ensured} instead.
     def initialize(*args)
       @data = {
-        :user         => nil,
-        :host         => nil,
-        :realname     => nil,
-        :authname     => nil,
-        :idle         => 0,
-        :signed_on_at => nil,
-        :unknown?     => false,
-        :online?      => false,
-        :channels     => [],
-        :secure?      => false,
-        :away         => nil,
-        :oper?        => false,
+        user: nil,
+        host: nil,
+        realname: nil,
+        authname: nil,
+        idle: 0,
+        signed_on_at: nil,
+        unknown?: false,
+        online?: false,
+        channels: [],
+        secure?: false,
+        away: nil,
+        oper?: false,
       }
       case args.size
       when 2
@@ -211,9 +212,9 @@ module Cinch
         raise ArgumentError
       end
 
-      @synced_attributes  = Set.new
+      @synced_attributes = Set.new
 
-      @when_requesting_synced_attribute = lambda {|attr|
+      @when_requesting_synced_attribute = lambda { |attr|
         unless attribute_synced?(attr)
           @data[:unknown?] = false
           unsync :unknown?
@@ -248,18 +249,19 @@ module Cinch
     #   future version.
     def refresh
       return if @in_whois
+
       @data.keys.each do |attr|
         unsync attr
       end
 
       @in_whois = true
       if @bot.irc.network.whois_only_one_argument?
-        @bot.irc.send "WHOIS #@name"
+        @bot.irc.send "WHOIS #{@name}"
       else
-        @bot.irc.send "WHOIS #@name #@name"
+        @bot.irc.send "WHOIS #{@name} #{@name}"
       end
     end
-    alias_method :whois, :refresh # deprecated
+    alias whois refresh # deprecated
     undef_method(:whois) # yardoc hack
 
     # @deprecated
@@ -303,16 +305,16 @@ module Cinch
       end
 
       if values[:registered]
-        values[:authname] ||= self.nick
+        values[:authname] ||= nick
         values.delete(:registered)
       end
       {
-        :authname => nil,
-        :idle     => 0,
-        :secure?  => false,
-        :oper?    => false,
-        :away     => nil,
-        :channels => [],
+        authname: nil,
+        idle: 0,
+        secure?: false,
+        oper?: false,
+        away: nil,
+        channels: [],
       }.merge(values).each do |attr, value|
         sync(attr, value, true)
       end
@@ -351,20 +353,20 @@ module Cinch
     #
     # @return [Mask]
     def mask(s = "%n!%u@%h")
-      s = s.gsub(/%(.)/) {
-        case $1
+      s = s.gsub(/%(.)/) do
+        case Regexp.last_match(1)
         when "n"
           @name
         when "u"
-          self.user
+          user
         when "h"
-          self.host
+          host
         when "r"
-          self.realname
+          realname
         when "a"
-          self.authname
+          authname
         end
-      }
+      end
 
       Mask.new(s)
     end
@@ -376,7 +378,7 @@ module Cinch
     def match(other)
       Mask.from(other) =~ Mask.from(self)
     end
-    alias_method :=~, :match
+    alias =~ match
 
     # Starts monitoring a user's online state by either using MONITOR
     # or periodically running WHOIS.
@@ -386,12 +388,12 @@ module Cinch
     # @see #unmonitor
     def monitor
       if @bot.irc.isupport["MONITOR"] > 0
-        @bot.irc.send "MONITOR + #@name"
+        @bot.irc.send "MONITOR + #{@name}"
       else
         refresh
-        @monitored_timer = Timer.new(@bot, interval: 30) {
+        @monitored_timer = Timer.new(@bot, interval: 30) do
           refresh
-        }
+        end
         @monitored_timer.start
       end
 
@@ -405,9 +407,9 @@ module Cinch
     # @see #monitor
     def unmonitor
       if @bot.irc.isupport["MONITOR"] > 0
-        @bot.irc.send "MONITOR - #@name"
+        @bot.irc.send "MONITOR - #{@name}"
       else
-        @monitored_timer.stop if @monitored_timer
+        @monitored_timer&.stop
       end
 
       @monitored = false
@@ -425,8 +427,7 @@ module Cinch
       dcc = DCC::Outgoing::Send.new(receiver: self,
                                     filename: filename,
                                     io: io,
-                                    own_ip: own_ip
-                                    )
+                                    own_ip: own_ip)
 
       dcc.start_server
 
@@ -435,6 +436,7 @@ module Cinch
                                         /\001DCC RESUME #{filename} #{dcc.port} (\d+)\001/,
                                         /$/)) do |m, position|
         next unless m.user == self
+
         dcc.seek(position.to_i)
         m.user.send "\001DCC ACCEPT #{filename} #{dcc.port} #{position}\001"
 
@@ -460,10 +462,11 @@ module Cinch
     # @return [void]
     # @api private
     def online=(bool)
-      notify = self.__send__("online?_unsynced") != bool && @monitored
+      notify = __send__("online?_unsynced") != bool && @monitored
       sync(:online?, bool, true)
 
       return unless notify
+
       if bool
         @bot.handlers.dispatch(:online, nil, self)
       else
@@ -477,7 +480,8 @@ module Cinch
     # @api private
     # @return [void]
     def update_nick(new_nick)
-      @last_nick, @name = @name, new_nick
+      @last_nick = @name
+      @name = new_nick
       # Unsync authname because some networks tie authentication to
       # the nick, so the user might not be authenticated anymore after
       # changing their nick

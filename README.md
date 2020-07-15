@@ -174,8 +174,8 @@ is missing that awesome jaw-dropping feature and you want to be the one to
 make this magic happen, you can!
 
 Please note that although we very much appreciate all of your efforts, Grinch
-will not accept patches in aid of Ruby 1.8 compatibility. We have no intention
-of supporting Ruby versions below 1.9.1.
+will not accept patches in aid of Ruby 2.5 compatibility. We have no intention
+of supporting Ruby versions below 2.5.
 
 Fork the project, implement your awesome feature in its own branch, and send
 a pull request to one of the Grinch collaborators. We'll be more than happy

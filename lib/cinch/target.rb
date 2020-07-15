@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Cinch
   # @since 2.0.0
   class Target
@@ -30,7 +32,7 @@ module Cinch
     # @note The aliases `msg` and `privmsg` are deprecated and will be
     #   removed in a future version.
     def send(text, notice = false)
-      # TODO deprecate `notice` argument, put splitting into own
+      # TODO: deprecate `notice` argument, put splitting into own
       # method
       text = text.to_s
       split_start = @bot.config.message_split_start || ""
@@ -42,12 +44,12 @@ module Cinch
         splitted = split_message(line, prefix, split_start, split_end)
 
         splitted[0, (@bot.config.max_messages || splitted.size)].each do |string|
-          @bot.irc.send("#{command} #@name :#{string}")
+          @bot.irc.send("#{command} #{@name} :#{string}")
         end
       end
     end
-    alias_method :msg, :send # deprecated
-    alias_method :privmsg, :send # deprecated
+    alias msg send # deprecated
+    alias privmsg send # deprecated
     undef_method(:msg) # yardoc hack
     undef_method(:privmsg) # yardoc hack
 
@@ -78,8 +80,8 @@ module Cinch
     def safe_send(text, notice = false)
       send(Cinch::Helpers.sanitize(text), notice)
     end
-    alias_method :safe_msg, :safe_send # deprecated
-    alias_method :safe_privmsg, :safe_msg # deprecated
+    alias safe_msg safe_send # deprecated
+    alias safe_privmsg safe_msg # deprecated
     undef_method(:safe_msg) # yardoc hack
     undef_method(:safe_privmsg) # yardoc hack
 
@@ -94,7 +96,6 @@ module Cinch
       Cinch::Utilities::Deprecation.print_deprecation("2.2.0", "Target#safe_privmsg", "Target#safe_send")
       send(*args)
     end
-
 
     # Like {#safe_msg} but for notices.
     #
@@ -113,7 +114,7 @@ module Cinch
     # @see #safe_action
     def action(text)
       line = text.to_s.each_line.first.chomp
-      @bot.irc.send("PRIVMSG #@name :\001ACTION #{line}\001")
+      @bot.irc.send("PRIVMSG #{@name} :\001ACTION #{line}\001")
     end
 
     # Like {#action}, but remove any non-printable characters from
@@ -163,28 +164,25 @@ module Cinch
         left <=> other.name.irc_downcase(casemapping)
       elsif other.is_a?(String)
         left <=> other.irc_downcase(casemapping)
-      else
-        nil
       end
     end
 
     private
+
     def split_message(msg, prefix, split_start, split_end)
       max_bytesize = 510 - prefix.bytesize
       max_bytesize_without_end = max_bytesize - split_end.bytesize
 
-      if msg.bytesize <= max_bytesize
-        return [msg]
-      end
+      return [msg] if msg.bytesize <= max_bytesize
 
       splitted = []
       while msg.bytesize > max_bytesize_without_end
         acc = 0
-        acc_rune_sizes = msg.each_char.map {|ch|
+        acc_rune_sizes = msg.each_char.map do |ch|
           acc += ch.bytesize
-        }
+        end
 
-        max_rune = acc_rune_sizes.rindex {|bs| bs <= max_bytesize_without_end} || 0
+        max_rune = acc_rune_sizes.rindex { |bs| bs <= max_bytesize_without_end } || 0
         r = [msg.rindex(/\s/, max_rune) || (max_rune + 1), 1].max
 
         splitted << (msg[0...r] + split_end)
@@ -193,7 +191,7 @@ module Cinch
       splitted << msg
 
       # clean string from any substitute characters
-      splitted.map {|string| string.tr("\cz", " ")}
+      splitted.map { |string| string.tr("\cz", " ") }
     end
   end
 end

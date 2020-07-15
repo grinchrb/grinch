@@ -1,4 +1,5 @@
-require "thread"
+# frozen_string_literal: true
+
 require "set"
 require "cinch/cached_list"
 
@@ -8,7 +9,7 @@ module Cinch
     include Enumerable
 
     def initialize
-      @handlers = Hash.new {|h,k| h[k] = []}
+      @handlers = Hash.new { |h, k| h[k] = [] }
       @mutex = Mutex.new
     end
 
@@ -34,13 +35,11 @@ module Cinch
     # @return [Array<Handler>]
     def find(type, msg = nil)
       if handlers = @handlers[type]
-        if msg.nil?
-          return handlers
-        end
+        return handlers if msg.nil?
 
-        handlers = handlers.select { |handler|
+        handlers = handlers.select do |handler|
           msg.match(handler.pattern.to_r(msg), type, handler.strip_colors)
-        }.group_by {|handler| handler.group}
+        end.group_by(&:group)
 
         handlers.values_at(*(handlers.keys - [nil])).map(&:first) + (handlers[nil] || [])
       end
@@ -59,14 +58,15 @@ module Cinch
         already_run = Set.new
         handlers.each do |handler|
           next if already_run.include?(handler.block)
+
           already_run << handler.block
           # calling Message#match multiple times is not a problem
           # because we cache the result
-          if msg
-            captures = msg.match(handler.pattern.to_r(msg), event, handler.strip_colors).captures
-          else
-            captures = []
-          end
+          captures = if msg
+                       msg.match(handler.pattern.to_r(msg), event, handler.strip_colors).captures
+                     else
+                       []
+                     end
 
           threads << handler.call(msg, captures, arguments)
         end
@@ -84,7 +84,7 @@ module Cinch
 
     # @api private
     def stop_all
-      each { |h| h.stop }
+      each(&:stop)
     end
   end
 end
